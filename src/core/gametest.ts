@@ -1,53 +1,86 @@
-import React, { useState, useEffect, useRef } from "react";
-import _ from "lodash";
+/**
+ * 游戏逻辑 V2（不固定 level）
+ *
+ * @author yupi https://github.com/liyupi
+ */
+import { useEffect, useRef, useState } from "react";
 import { useGlobalStore } from "./globalStore";
+// @ts-ignore
+import _ from "lodash";
 
 const useGame = () => {
-  const totalBlockNum = useRef<any>(0);
-  const slotAreaVal = useRef<BlockType[]>([]);
-  const gameStatus = useRef<number>(0);
-  const currSlotNum = useRef<number>(0);
-  const clearBlockNum = useRef<any>(0);
-  const isHolyLight = useRef<Boolean>(false);
-  const canSeeRandom = useRef<Boolean>(false);
-  const levelBlocksVal = useRef<BlockType[]>([]);
-  const randomBlocksVal = useRef<BlockType[][]>([]);
+  const {
+    state: { gameConfig },
+  } = useGlobalStore();
+  //   const refGameStatus = useRef(0);
+  //   const refLevelBlocksVal = useRef([]);
+  //   const refRandomBlocksVal = useRef(0);
+  //   const refSlotAreaVal = useRef(0);
+  //   const refCurrSlotNum = useRef(0);
+  //   const refOpHistory = useRef();
+  //   const refTotalBlockNum = useRef(0);
+  //   const refClearBlockNum = useRef(0);
+  //   const refIsHolyLight = useRef(false);
+  //   const refCanSeeRandom = useRef(false);
+  //   useEffect(() => {
+  //     setGameStatus(refGameStatus.current);
+  //     setLevelBlocksVal(refLevelBlocksVal.current);
+  //     setRandomBlocksVal(refRandomBlocksVal.current);
+  //     setSlotAreaVal(refSlotAreaVal.current);
+  //     setCurrSlotNum(refCurrSlotNum.current);
+  //     setOpHistory(refOpHistory.current);
+  //     setTotalBlockNum(refTotalBlockNum.current);
+  //     setClearBlockNum(refClearBlockNum.current);
+  //     setIsHolyLight(refIsHolyLight.current);
+  //     setCanSeeRandom(refCanSeeRandom.current)
+  //   }, [
+  //     refGameStatus.current,
+  //     refLevelBlocksVal.current,
+  //     refRandomBlocksVal.current,
+  //     refSlotAreaVal.current,
+  //     refCurrSlotNum.current,
+  //     refOpHistory.current,
+  //     refTotalBlockNum.current,
+  //     refClearBlockNum.current,
+  //     refIsHolyLight.current,
+  //     refCanSeeRandom.current,
+  //   ]);
+
+  const [gameStatus, setGameStatus] = useState<number>(0);
+  const [levelBlocksVal, setLevelBlocksVal] = useState<any>([]);
+  const [randomBlocksVal, setRandomBlocksVal] = useState<any>([]);
+  const [slotAreaVal, setSlotAreaVal] = useState<any>([]);
+  const [currSlotNum, setCurrSlotNum] = useState<number>(0);
+  const [opHistory, setOpHistory] = useState<any>([]);
+  const [totalBlockNum, setTotalBlockNum] = useState<number>(0);
+  const [clearBlockNum, setClearBlockNum] = useState<number>(0);
+  const [isHolyLight, setIsHolyLight] = useState<boolean>(false);
+  const [canSeeRandom, setCanSeeRandom] = useState<boolean>(false);
+  // 保存所有块（包括随机块）
   const allBlocks: BlockType[] = [];
   const blockData: Record<number, BlockType> = {};
 
+  // 总共划分 24 x 24 的格子，每个块占 3 x 3 的格子，生成的起始 x 和 y 坐标范围均为 0 ~ 21
   const boxWidthNum = 24;
   const boxHeightNum = 24;
 
   // 每个格子的宽高
   const widthUnit = 14;
   const heightUnit = 14;
+
+  // 保存整个 "棋盘" 的每个格子状态（下标为格子起始点横纵坐标）
   let chessBoard: ChessBoardUnitType[][] = [];
+
   // 操作历史（存储点击的块）
-  let opHistory: BlockType[] = [];
-  const {
-    state: { gameConfig },
-  } = useGlobalStore();
-  const [, updateState] = React.useState<any>();
-  const forceUpdate = React.useCallback(() => updateState({}), []);
 
-  useEffect(() => {
-    console.log("forceUpdateforceUpdateforceUpdate");
+  // region 技能相关
+  // endregion
 
-    forceUpdate();
-  }, [
-    gameStatus.current,
-    levelBlocksVal.current.length,
-    randomBlocksVal.current.length,
-    slotAreaVal.current.length,
-    widthUnit,
-    heightUnit,
-    totalBlockNum.current,
-    clearBlockNum.current,
-    isHolyLight.current,
-    canSeeRandom.current,
-    currSlotNum.current,
-  ]);
-
+  /**
+   * 初始化指定大小的棋盘
+   * @param width
+   * @param height
+   */
   const initChessBoard = (width: number, height: number) => {
     chessBoard = new Array(width);
     for (let i = 0; i < width; i++) {
@@ -63,18 +96,23 @@ const useGame = () => {
   // 初始化棋盘
   initChessBoard(boxWidthNum, boxHeightNum);
 
+  /**
+   * 游戏初始化
+   */
   const initGame = () => {
-    console.log("initGa", gameConfig);
+    console.log("initGame", gameConfig);
 
     // 0. 设置父容器宽高
     const levelBoardDom: any = document.getElementsByClassName("level-board");
+    console.log("levelBoardDom", levelBoardDom, gameStatus);
+
     levelBoardDom[0].style.width = widthUnit * boxWidthNum + "px";
     levelBoardDom[0].style.height = heightUnit * boxHeightNum + "px";
 
     // 1. 规划块数
     // 块数单位（总块数必须是该值的倍数）
     const blockNumUnit = gameConfig.composeNum * gameConfig.typeNum;
-    console.log("blockNumUnit", blockNumUnit);
+    console.log("块数单位", blockNumUnit);
 
     // 随机生成的总块数
     const totalRandomBlockNum = gameConfig.randomBlocks.reduce(
@@ -83,23 +121,19 @@ const useGame = () => {
       },
       0
     );
-    console.log("totalRandomBlockNum", totalRandomBlockNum);
+    console.log("随机生成的总块数", totalRandomBlockNum);
 
     // 需要的最小块数
     const minBlockNum =
       gameConfig.levelNum * gameConfig.levelBlockNum + totalRandomBlockNum;
-    console.log("minBlockNum", minBlockNum);
 
     // 补齐到 blockNumUnit 的倍数
     // e.g. minBlockNum = 14, blockNumUnit = 6, 补到 18
-    totalBlockNum.current = minBlockNum;
-    if (totalBlockNum.current % blockNumUnit !== 0) {
-      const temp = (Math.floor(minBlockNum / blockNumUnit) + 1) * blockNumUnit;
-      console.log("temptemptemptemptemptempp", temp);
-
-      totalBlockNum.current = temp;
+    let tempTotalBlockNum = minBlockNum;
+    if (tempTotalBlockNum % blockNumUnit !== 0) {
+      tempTotalBlockNum =
+        (Math.floor(minBlockNum / blockNumUnit) + 1) * blockNumUnit;
     }
-    console.log("totalBlockNum", totalBlockNum);
 
     // 2. 初始化块，随机生成块的内容
     // 保存所有块的数组
@@ -107,14 +141,14 @@ const useGame = () => {
     // 需要用到的动物数组
     const needAnimals = gameConfig.animals.slice(0, gameConfig.typeNum);
     // 依次把块塞到数组里
-    for (let i = 0; i < totalBlockNum.current; i++) {
+    for (let i = 0; i < tempTotalBlockNum; i++) {
       animalBlocks.push(needAnimals[i % gameConfig.typeNum]);
     }
     // 打乱数组
     const randomAnimalBlocks = _.shuffle(animalBlocks);
 
     // 初始化
-    for (let i = 0; i < totalBlockNum.current; i++) {
+    for (let i = 0; i < tempTotalBlockNum; i++) {
       const newBlock = {
         id: i,
         status: 0,
@@ -131,7 +165,6 @@ const useGame = () => {
 
     // 3. 计算随机生成的块
     const randomBlocks: BlockType[][] = [];
-
     gameConfig.randomBlocks.forEach((randomBlock: number, idx: number) => {
       randomBlocks[idx] = [];
       for (let i = 0; i < randomBlock; i++) {
@@ -141,8 +174,8 @@ const useGame = () => {
       }
     });
 
-    // 剩余块
-    let leftBlockNum = totalBlockNum.current - totalRandomBlockNum;
+    // 剩余块数
+    let leftBlockNum = tempTotalBlockNum - totalRandomBlockNum;
 
     // 4. 计算有层级关系的块
     const levelBlocks: BlockType[] = [];
@@ -172,11 +205,7 @@ const useGame = () => {
           }
         }
       }
-      console.log("allBlocs", blockData, allBlocks);
-
       const nextGenBlocks = allBlocks.slice(pos, pos + nextBlockNum);
-      console.log("nextGenBcksnextGenBlocks", nextGenBlocks);
-
       levelBlocks.push(...nextGenBlocks);
       pos = pos + nextBlockNum;
       // 生成块的坐标
@@ -186,12 +215,12 @@ const useGame = () => {
         break;
       }
     }
-    console.log("leftBlockNum", leftBlockNum);
+    console.log("最终剩余块数", leftBlockNum);
 
     // 4. 初始化空插槽
     const slotArea: BlockType[] = new Array(gameConfig.slotNum).fill(null);
-    console.log("randomBlocks", randomBlocks);
-
+    console.log("随机块情况", randomBlocks);
+    setTotalBlockNum(tempTotalBlockNum);
     return {
       levelBlocks,
       randomBlocks,
@@ -199,6 +228,14 @@ const useGame = () => {
     };
   };
 
+  /**
+   * 生成一批层级块（坐标、层级关系）
+   * @param blocks
+   * @param minX
+   * @param minY
+   * @param maxX
+   * @param maxY
+   */
   const genLevelBlockPos = (
     blocks: BlockType[],
     minX: number,
@@ -266,24 +303,31 @@ const useGame = () => {
     block.level = maxLevel + 1;
   };
 
+  /**
+   * 点击块事件
+   * @param block
+   * @param randomIdx 随机区域下标，>= 0 表示点击的是随机块
+   * @param force 强制移除
+   */
   const doClickBlock = (block: BlockType, randomIdx = -1, force = false) => {
-    // 已经输了 / 已经被点击 / 有上层块（且非强制和圣光），不能再点
+    // 已经输了 / 已经被点击 / 有上层块（且非强制和圣光），不能再点击
     if (
-      currSlotNum.current >= gameConfig.slotNum ||
+      currSlotNum >= gameConfig.slotNum ||
       block.status !== 0 ||
-      (block.lowerThanBlocks.length > 0 && !force && !isHolyLight.current)
+      (block.lowerThanBlocks.length > 0 && !force && !isHolyLight)
     ) {
       return;
     }
-    isHolyLight.current = false;
+    isHolyLight = false;
     // 修改元素状态为已点击
     block.status = 1;
     // 移除当前元素
     if (randomIdx >= 0) {
       // 移除所点击的随机区域的第一个元素
-      randomBlocksVal.current[randomIdx] = randomBlocksVal.current[
-        randomIdx
-      ].slice(1, randomBlocksVal.current[randomIdx].length);
+      randomBlocksVal[randomIdx] = randomBlocksVal[randomIdx].slice(
+        1,
+        randomBlocksVal[randomIdx].length
+      );
     } else {
       // 非随机区才可撤回
       opHistory.push(block);
@@ -295,17 +339,14 @@ const useGame = () => {
       });
     }
     // 新元素加入插槽
-    let tempSlotNum = currSlotNum.current;
-    slotAreaVal.current[tempSlotNum] = block;
-
+    let tempSlotNum = currSlotNum;
+    slotAreaVal[tempSlotNum] = block;
     // 检查是否有可消除的
     // block => 出现次数
     const map: Record<string, number> = {};
     // 去除空槽
-    const tempSlotAreaVal = slotAreaVal.current.filter(
-      (slotBlock: any) => !!slotBlock
-    );
-    tempSlotAreaVal.forEach((slotBlock: any) => {
+    const tempSlotAreaVal = slotAreaVal.filter((slotBlock) => !!slotBlock);
+    tempSlotAreaVal.forEach((slotBlock) => {
       const type = slotBlock.type;
       if (!map[type]) {
         map[type] = 1;
@@ -318,67 +359,73 @@ const useGame = () => {
     // 得到新数组
     const newSlotAreaVal = new Array(gameConfig.slotNum).fill(null);
     tempSlotNum = 0;
-    tempSlotAreaVal.forEach((slotBlock: any) => {
+    tempSlotAreaVal.forEach((slotBlock) => {
       // 成功消除（不添加到新数组中）
       if (map[slotBlock.type] >= gameConfig.composeNum) {
         // 块状态改为已消除
         slotBlock.status = 2;
         // 已消除块数 +1
-        clearBlockNum.current = clearBlockNum.current + 1;
+        clearBlockNum++;
         // 清除操作记录，防止撤回
         opHistory = [];
         return;
       }
       newSlotAreaVal[tempSlotNum++] = slotBlock;
     });
-    console.log("slotAreaVal.currentn", slotAreaVal.current, newSlotAreaVal);
-    console.log("currSlotNum.current", currSlotNum.current, tempSlotNum);
-
-    slotAreaVal.current = newSlotAreaVal;
-    currSlotNum.current = tempSlotNum;
+    slotAreaVal = newSlotAreaVal;
+    currSlotNum = tempSlotNum;
     // 游戏结束
     if (tempSlotNum >= gameConfig.slotNum) {
-      gameStatus.current = 2;
+      gameStatus = 2;
       setTimeout(() => {
         alert("你输了");
       }, 2000);
     }
-    if (clearBlockNum.current >= totalBlockNum.current) {
-      gameStatus.current = 3;
+    if (clearBlockNum >= totalBlockNum) {
+      gameStatus = 3;
     }
-
-    forceUpdate();
   };
 
+  /**
+   * 开始游戏
+   */
   const doStart = () => {
-    gameStatus.current = 0;
+    gameStatus = 0;
     const { levelBlocks, randomBlocks, slotArea } = initGame();
-    console.log(555555, levelBlocks, randomBlocks, slotArea);
-    levelBlocksVal.current = levelBlocks;
-    randomBlocksVal.current = randomBlocks;
-    slotAreaVal.current = slotArea;
-    gameStatus.current = 1;
+    console.log(levelBlocks, randomBlocks, slotArea);
+    levelBlocksVal = levelBlocks;
+    randomBlocksVal = randomBlocks;
+    slotAreaVal = slotArea;
+    gameStatus = 1;
   };
 
+  // region 技能
+
+  /**
+   * 洗牌
+   *
+   * @desc 随机重洗所有未被点击的块
+   */
   const doShuffle = () => {
-    // 遍历所有
-    const originBlocks = allBlocks.filter((block: any) => block.status === 0);
-    const newBlockTypes = _.shuffle(
-      originBlocks.map((block: any) => block.type)
-    );
+    // 遍历所有未消除的块
+    const originBlocks = allBlocks.filter((block) => block.status === 0);
+    const newBlockTypes = _.shuffle(originBlocks.map((block) => block.type));
     let pos = 0;
-    originBlocks.forEach((block: any) => {
+    originBlocks.forEach((block) => {
       block.type = newBlockTypes[pos++];
     });
-    levelBlocksVal.current = [...levelBlocksVal.current];
+    levelBlocksVal = [...levelBlocksVal];
   };
 
+  /**
+   * 破坏
+   *
+   * @desc 消除一组层级块
+   */
   const doBroke = () => {
     // 类型，块列表映射
     const typeBlockMap: Record<string, BlockType[]> = {};
-    const blocks = levelBlocksVal.current.filter(
-      (block: any) => block.status === 0
-    );
+    const blocks = levelBlocksVal.filter((block) => block.status === 0);
     // 遍历所有未消除的层级块
     for (let i = 0; i < blocks.length; i++) {
       const block = blocks[i];
@@ -397,14 +444,19 @@ const useGame = () => {
     }
   };
 
+  /**
+   * 撤回
+   *
+   * @desc 后退一步
+   */
   const doRevert = () => {
     if (opHistory.length < 1) {
       return;
     }
     opHistory[opHistory.length - 1].status = 0;
-    genLevelRelation(slotAreaVal.current[currSlotNum.current - 1]);
+    genLevelRelation(slotAreaVal[currSlotNum - 1]);
     // @ts-ignore
-    slotAreaVal.current[currSlotNum.current - 1] = null;
+    slotAreaVal[currSlotNum - 1] = null;
   };
 
   /**
@@ -412,16 +464,16 @@ const useGame = () => {
    */
   const doRemove = () => {
     // 移除第一个块
-    const block = slotAreaVal.current[0];
+    const block = slotAreaVal[0];
     if (!block) {
       return;
     }
     // 槽移除块
-    for (let i = 0; i < slotAreaVal.current.length - 1; i++) {
-      slotAreaVal.current[i] = slotAreaVal.current[i + 1];
+    for (let i = 0; i < slotAreaVal.length - 1; i++) {
+      slotAreaVal[i] = slotAreaVal[i + 1];
     }
     // @ts-ignore
-    slotAreaVal.current[slotAreaVal.current.length - 1] = null;
+    slotAreaVal[slotAreaVal.length - 1] = null;
     // 改变新块的坐标
     block.x = Math.floor(Math.random() * (boxWidthNum - 2));
     block.y = boxHeightNum - 2;
@@ -429,7 +481,7 @@ const useGame = () => {
     // 移除的是随机块的元素，移到层级区域
     if (block.level < 1) {
       block.level = 10000;
-      levelBlocksVal.current.push(block);
+      levelBlocksVal.push(block);
     }
   };
 
@@ -439,7 +491,7 @@ const useGame = () => {
    * @desc 下一个块可以任意点击
    */
   const doHolyLight = () => {
-    isHolyLight.current = !isHolyLight.current;
+    isHolyLight = true;
   };
 
   /**
@@ -448,24 +500,24 @@ const useGame = () => {
    * @desc 可以看到随机块
    */
   const doSeeRandom = () => {
-    canSeeRandom.current = !canSeeRandom.current;
+    canSeeRandom = !canSeeRandom;
   };
 
-  // ... (rest of the code)
+  // endregion
 
   return {
-    gameStatus: gameStatus.current,
-    levelBlocksVal: levelBlocksVal.current,
-    randomBlocksVal: randomBlocksVal.current,
-    slotAreaVal: slotAreaVal.current,
+    gameStatus: gameStatus,
+    levelBlocksVal: levelBlocksVal,
+    randomBlocksVal: randomBlocksVal,
+    slotAreaVal: slotAreaVal,
     widthUnit: widthUnit,
     heightUnit: heightUnit,
-    currSlotNum: currSlotNum.current,
+    currSlotNum: currSlotNum,
     opHistory: opHistory,
-    totalBlockNum: totalBlockNum.current,
-    clearBlockNum: clearBlockNum.current,
-    isHolyLight: isHolyLight.current,
-    canSeeRandom: canSeeRandom.current,
+    totalBlockNum: totalBlockNum,
+    clearBlockNum: clearBlockNum,
+    isHolyLight: isHolyLight,
+    canSeeRandom: canSeeRandom,
     doClickBlock,
     doStart,
     doShuffle,

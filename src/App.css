@@ -1,38 +1,61 @@
-.App {
+#indexPage {
+  text-align: center;
+}
+.content {
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+.footer {
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 12px;
+  text-align: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.level-board {
+  position: relative;
+}
+
+.level-block {
+  position: absolute;
+}
+
+.random-board {
+  margin-top: 8px;
+}
+
+.random-area {
+  margin-top: 8px;
+}
+
+.slot-board {
+  border: 10px solid saddlebrown;
+  margin: 16px auto;
+  width: fit-content;
+}
+
+.skill-board {
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.block {
+  font-size: 28px;
+  width: 42px;
+  height: 42px;
+  line-height: 42px;
+  border: 1px solid #eee;
+  background: white;
+  text-align: center;
+  vertical-align: top;
+  display: inline-block;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.disabled {
+  background: grey;
+  cursor: not-allowed;
 }
